@@ -269,7 +269,7 @@ class CouponWarden_Features {
 			$sql   .= ' AND CONCAT(",", coupons, ",") LIKE %s';
 			$args[] = '%,' . $wpdb->esc_like( wc_format_coupon_code( $coupon ) ) . ',%';
 		}
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- placeholders built above.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, PluginCheck.Security.DirectDB.UnescapedDBParameter -- placeholders built above.
 		return (int) $wpdb->get_var( $wpdb->prepare( $sql, $args ) );
 	}
 
@@ -288,7 +288,7 @@ class CouponWarden_Features {
 		$id      = self::order_identity( $order );
 		$coupons = array_map( 'wc_format_coupon_code', $order->get_coupon_codes() );
 		$created = $order->get_date_created();
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- own table, write.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- own table, write.
 		$wpdb->replace(
 			self::table(),
 			array(
