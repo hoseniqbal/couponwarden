@@ -274,6 +274,37 @@ class CouponWarden_Features {
 	}
 
 	/**
+	 * Coupons used on earlier paid orders by this person.
+	 *
+	 * @param array $id      Identity.
+	 * @param int   $exclude Order ID to ignore.
+	 * @return string[]
+	 */
+	public static function history( $id, $exclude = 0 ) {
+		global $wpdb;
+		$or   = array();
+		$args = array( self::table() );
+		foreach ( array( 'email' => 'match_email', 'phone' => 'match_phone', 'addr' => 'match_address' ) as $key => $setting ) {
+			if ( '' !== $id[ $key ] && CouponWarden_Settings::on( $setting ) ) {
+				$or[]   = $key . '_hash = %s';
+				$args[] = $id[ $key ];
+			}
+		}
+		if ( ! $or ) {
+			return array();
+		}
+		$args[] = (int) $exclude;
+		$sql    = 'SELECT coupons FROM %i WHERE (' . implode( ' OR ', $or ) . ") AND order_id <> %d AND coupons <> '' LIMIT 200";
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, PluginCheck.Security.DirectDB.UnescapedDBParameter -- placeholders built above.
+		$rows = (array) $wpdb->get_col( $wpdb->prepare( $sql, $args ) );
+		$out  = array();
+		foreach ( $rows as $row ) {
+			$out = array_merge( $out, explode( ',', $row ) );
+		}
+		return array_values( array_unique( array_filter( $out ) ) );
+	}
+
+	/**
 	 * Remember a paid order.
 	 *
 	 * @param WC_Order $order Order.
@@ -429,6 +460,15 @@ class CouponWarden_Features {
 			} elseif ( $rules['once'] && self::matches( $id, $code, $exclude ) > 0 ) {
 				$why = 'once';
 			}
+			/**
+			 * Refuse a coupon for other reasons. Return 'new_only', 'once' or ''.
+			 *
+			 * @param string $why     Current decision.
+			 * @param string $code    Coupon code.
+			 * @param array  $id      Identity hashes.
+			 * @param int    $exclude Order being placed.
+			 */
+			$why = (string) apply_filters( 'couponwarden_refuse', $why, $code, $id, $exclude );
 			if ( '' !== $why ) {
 				$seen = 'couponwarden_try_' . md5( $code . '|' . implode( '|', $id ) );
 				if ( ! get_transient( $seen ) ) {
