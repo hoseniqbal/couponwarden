@@ -430,16 +430,20 @@ class CouponWarden_Features {
 				$why = 'once';
 			}
 			if ( '' !== $why ) {
-				CouponWarden_Log::add(
-					'blocked',
-					array(
-						'object_id' => 0,
-						'user_id'   => $user_id,
-						'field'     => $why,
-						'amount'    => isset( $amounts[ $code ] ) ? (float) $amounts[ $code ] : 0,
-						'detail'    => $code,
-					)
-				);
+				$seen = 'couponwarden_try_' . md5( $code . '|' . implode( '|', $id ) );
+				if ( ! get_transient( $seen ) ) {
+					set_transient( $seen, 1, 10 * MINUTE_IN_SECONDS );
+					CouponWarden_Log::add(
+						'blocked',
+						array(
+							'object_id' => 0,
+							'user_id'   => $user_id,
+							'field'     => $why,
+							'amount'    => isset( $amounts[ $code ] ) ? (float) $amounts[ $code ] : 0,
+							'detail'    => $code,
+						)
+					);
+				}
 				$msg = (string) CouponWarden_Settings::get( 'new_only' === $why ? 'msg_new' : 'msg_once' );
 				return str_replace( '%s', strtoupper( $code ), $msg );
 			}
